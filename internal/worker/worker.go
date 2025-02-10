@@ -101,7 +101,9 @@ func (w *Worker) processEvent(event fslisten.Event) {
 
 		// If the filename starts with "delete_", remove it instead of copying
 		if strings.HasPrefix(filepath.Base(dst), "delete_") {
-			w.deleteFileOrDir(event.Path, destPath)
+			destDir, destBase := filepath.Split(destPath)
+			destBase = strings.TrimPrefix(destBase, "delete_")
+			w.deleteFileOrDir(event.Path, filepath.Join(destDir, destBase))
 		} else {
 			err = Copy(event.Path, destPath)
 			if err != nil {
