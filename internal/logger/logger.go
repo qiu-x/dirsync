@@ -27,7 +27,7 @@ type Logger struct {
 func NewLogger(filename string) *Logger {
 	l := &Logger{
 		logFile: filename,
-		logChan: make(chan LogEntry, 100), // Buffered channel
+		logChan: make(chan LogEntry, 50),
 	}
 
 	l.wg.Add(1)

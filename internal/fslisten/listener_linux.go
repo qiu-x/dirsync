@@ -131,7 +131,6 @@ func (w *Listener) ReadEvents(yield func(Event, error) bool) {
 
 				// Handle newly created dirs
 				if len(name) > 0 && e.Mask&unix.IN_ISDIR == unix.IN_ISDIR {
-					// w.addWatch(fullPath)
 					_ = w.WatchDirectory(fullPath)
 				}
 			}
