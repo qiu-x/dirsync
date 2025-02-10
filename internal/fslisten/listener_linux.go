@@ -2,7 +2,7 @@ package fslisten
 
 import (
 	"bytes"
-	_ "encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,7 +69,7 @@ type Listener struct {
 func New() (*Listener, error) {
 	fd, err := unix.InotifyInit1(0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize inotify: %v", err)
+		return nil, fmt.Errorf("failed to initialize inotify: %w", err)
 	}
 
 	w := &Listener{
@@ -105,10 +105,10 @@ func (w *Listener) ReadEvents(yield func(Event, error) bool) {
 
 		n, err := unix.Read(w.fd, buf[:])
 		if err != nil {
-			if err == syscall.EAGAIN {
+			if errors.Is(err, syscall.EAGAIN) {
 				continue
 			}
-			if !yield(Event{}, fmt.Errorf("error reading inotify events: %v", err)) {
+			if !yield(Event{}, fmt.Errorf("error reading inotify events: %w", err)) {
 				return
 			}
 		}
@@ -145,9 +145,14 @@ func (w *Listener) addWatch(path string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	wd, err := unix.InotifyAddWatch(w.fd, path, unix.IN_CREATE|unix.IN_DELETE|unix.IN_MODIFY|unix.IN_CLOSE_WRITE|unix.IN_MOVED_TO|unix.IN_MOVED_FROM)
+	const mask = unix.IN_CREATE | unix.IN_DELETE | unix.IN_MODIFY | unix.IN_CLOSE_WRITE | unix.IN_MOVED_TO | unix.IN_MOVED_FROM
+	wd, err := unix.InotifyAddWatch(
+		w.fd,
+		path,
+		mask,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to add watch for %s: %v", path, err)
+		return fmt.Errorf("failed to add watch for %s: %w", path, err)
 	}
 
 	w.watches[wd] = path

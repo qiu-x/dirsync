@@ -1,12 +1,13 @@
 package logger
 
 import (
-	"dirsync/internal/fslisten"
 	"encoding/json"
 	"log"
 	"os"
 	"sync"
 	"time"
+
+	"dirsync/internal/fslisten"
 )
 
 type LogEntry struct {

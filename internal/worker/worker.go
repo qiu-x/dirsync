@@ -2,9 +2,6 @@ package worker
 
 import (
 	"context"
-	"dirsync/internal/fslisten"
-	"dirsync/internal/logger"
-	"dirsync/internal/queue"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"dirsync/internal/fslisten"
+	"dirsync/internal/logger"
+	"dirsync/internal/queue"
 )
 
 type Worker struct {
@@ -20,7 +21,6 @@ type Worker struct {
 	destDir string
 	Queue   *queue.PersistentQueue[fslisten.Event]
 	Wg      *sync.WaitGroup
-	Ctx     context.Context
 	Logger  *logger.Logger
 }
 
@@ -114,8 +114,10 @@ func (w *Worker) processEvent(event fslisten.Event) {
 				os.Exit(1)
 			}
 
-			w.Logger.LogEvent(w.ID, event, fmt.Sprintf("Copied file to %s", filepath.Dir(destPath)))
+			w.Logger.LogEvent(w.ID, event, "Copied file to "+filepath.Dir(destPath))
 		}
+	case fslisten.Delete, fslisten.Ignore:
+		return
 	}
 }
 
@@ -138,15 +140,14 @@ func (w *Worker) deleteFileOrDir(srcPath, destPath string) {
 		w.Logger.LogEvent(w.ID, fslisten.Event{Path: destPath, Type: fslisten.Delete}, "Deleted from destination")
 	}
 
-	fmt.Printf("Deleted: %s and %s\n", srcPath, destPath)
+	log.Printf("Deleted: %s and %s\n", srcPath, destPath)
 }
 
-
-func (w *Worker) execute() {
+func (w *Worker) execute(ctx context.Context) {
 	defer w.Wg.Done()
 	for {
 		select {
-		case <-w.Ctx.Done():
+		case <-ctx.Done():
 			log.Printf("Worker %d shutting down: context canceled\n", w.ID)
 			return
 		default:
@@ -170,10 +171,9 @@ func Spawn(
 		ID:      id,
 		Queue:   q,
 		Wg:      wg,
-		Ctx:     ctx,
 		Logger:  log,
 		srcDir:  srcDir,
 		destDir: destDir,
 	}
-	go worker.execute()
+	go worker.execute(ctx)
 }

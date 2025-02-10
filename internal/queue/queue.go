@@ -3,19 +3,19 @@ package queue
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
+	"log"
 	"os"
 	"sync"
 )
 
-type PersistentQueue[T any] struct {
+type PersistentQueue[T comparable] struct {
 	mu       sync.Mutex
 	cond     *sync.Cond // Used to signal when items are available
 	items    []T
 	filename string
 }
 
-func New[T any](filename string) *PersistentQueue[T] {
+func New[T comparable](filename string) *PersistentQueue[T] {
 	q := &PersistentQueue[T]{items: make([]T, 0), filename: filename}
 	q.cond = sync.NewCond(&q.mu)
 	q.LoadFromFile()
@@ -48,11 +48,11 @@ func (q *PersistentQueue[T]) SaveToFile() {
 	var buf bytes.Buffer
 	encoder := gob.NewEncoder(&buf)
 	if err := encoder.Encode(q.items); err != nil {
-		fmt.Println("Error saving queue:", err)
+		log.Println("Error saving queue:", err)
 		return
 	}
 	if err := os.WriteFile(q.filename, buf.Bytes(), 0644); err != nil {
-		fmt.Println("Error writing queue to file:", err)
+		log.Println("Error writing queue to file:", err)
 	}
 }
 
@@ -65,12 +65,12 @@ func (q *PersistentQueue[T]) LoadFromFile() {
 			// File doesn't exist yet - it has to be created
 			return
 		}
-		fmt.Println("Error loading queue from file:", err)
+		log.Println("Error loading queue from file:", err)
 		return
 	}
 	buf := bytes.NewBuffer(data)
 	decoder := gob.NewDecoder(buf)
 	if err := decoder.Decode(&q.items); err != nil {
-		fmt.Println("Error decoding queue data:", err)
+		log.Println("Error decoding queue data:", err)
 	}
 }

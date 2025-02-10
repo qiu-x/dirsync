@@ -2,11 +2,7 @@ package main
 
 import (
 	"context"
-	"dirsync/internal/dirwatcher"
-	"dirsync/internal/fslisten"
-	"dirsync/internal/logger"
-	"dirsync/internal/queue"
-	"dirsync/internal/worker"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -17,11 +13,17 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"dirsync/internal/dirwatcher"
+	"dirsync/internal/fslisten"
+	"dirsync/internal/logger"
+	"dirsync/internal/queue"
+	"dirsync/internal/worker"
 )
 
 func validateArgs(hotdir, backup, state string) error {
 	if hotdir == "" || backup == "" || state == "" {
-		return fmt.Errorf("--state, --hotdir and --backup arguments must be provided")
+		return errors.New("--state, --hotdir and --backup arguments must be provided")
 	}
 	return nil
 }
@@ -32,7 +34,7 @@ func checkDirExists(path string) error {
 		return fmt.Errorf("hotdir %s does not exist", path)
 	}
 	if err != nil {
-		return fmt.Errorf("error checking hotdir: %v", err)
+		return fmt.Errorf("error checking hotdir: %w", err)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("hotdir %s is not a directory", path)
@@ -40,7 +42,7 @@ func checkDirExists(path string) error {
 	return nil
 }
 
-// create the backup directory if it doesn't exist
+// Create the backup directory if it doesn't exist.
 func ensureBackupDir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		parent := filepath.Dir(path)
@@ -48,25 +50,23 @@ func ensureBackupDir(path string) error {
 			return fmt.Errorf("parent directory %s does not exist", parent)
 		}
 		if err := os.MkdirAll(path, os.ModePerm); err != nil {
-			return fmt.Errorf("failed to create backup directory: %v", err)
+			return fmt.Errorf("failed to create backup directory: %w", err)
 		}
-		fmt.Printf("Created backup directory: %s\n", path)
+		log.Println("Created backup directory:", path)
 	} else if err != nil {
-		return fmt.Errorf("error checking backup directory: %v", err)
+		return fmt.Errorf("error checking backup directory: %w", err)
 	}
 	return nil
 }
 
-func handleShutdown(ctx context.Context, cancel context.CancelFunc) {
+func handleShutdown(cancel context.CancelFunc) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT)
 
 	<-signalChan
 	log.Println("Received termination signal. Shutting down gracefully...")
 	cancel()
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	<-shutdownCtx.Done()
-	defer shutdownCancel()
+	time.Sleep(5 * time.Second)
 	os.Exit(0)
 }
 
@@ -74,7 +74,7 @@ func startSync(hotPath, backupPath, statePath, logPath string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go handleShutdown(ctx, cancel)
+	go handleShutdown(cancel)
 
 	logger := logger.NewLogger(logPath)
 	defer logger.Close()
@@ -96,7 +96,7 @@ func startSync(hotPath, backupPath, statePath, logPath string) error {
 	})
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := range runtime.NumCPU() {
 		worker.Spawn(ctx, queue, &wg, i, logger, hotPath, backupPath)
 		wg.Add(1)
 	}
@@ -114,9 +114,9 @@ func main() {
 	viewMode := flag.Bool("view", false, "View log file and exit")
 
 	// Command-line flags for filtering
-	filter := flag.String("filter", "", "Filter logs by event path (partial match)")
-	from := flag.String("from", "", "Filter logs from this datetime (RFC3339)")
-	to := flag.String("to", "", "Filter logs up to this datetime (RFC3339)")
+	filter := flag.String("filter", "", "View Mode only. Filter logs by event path (partial match)")
+	from := flag.String("from", "", "View Mode only. Filter logs from this datetime (RFC3339)")
+	to := flag.String("to", "", "View Mode only. Filter logs up to this datetime (RFC3339)")
 
 	flag.Parse()
 
@@ -129,7 +129,7 @@ func main() {
 			log.Fatal("Error filtering logs:", err)
 		}
 
-		fmt.Printf("Showing %d matching log entries:\n\n", len(logs))
+		log.Printf("Showing %d matching log entries:\n\n", len(logs))
 		logger.Print(logs)
 
 		return

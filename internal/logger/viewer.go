@@ -34,7 +34,7 @@ func (lv *LogViewer) LoadLogs() ([]LogEntry, error) {
 		logs = append(logs, entry)
 	}
 
-	return logs, nil
+	return logs, err
 }
 
 func (lv *LogViewer) FilterLogs(filterRegex string, from, to string) ([]LogEntry, error) {
