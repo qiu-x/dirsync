@@ -28,6 +28,8 @@ func (t EventType) String() string {
 		return "Delete"
 	case Create:
 		return "Create"
+	case Modify:
+		return "Modify"
 	case Ignore:
 		return "Ignore"
 	}
@@ -39,11 +41,11 @@ func toEvetType(op uint32) EventType {
 	case op&unix.IN_CREATE == unix.IN_CREATE:
 		return Create
 	case op&unix.IN_MODIFY == unix.IN_MODIFY:
-		return Create
+		return Modify
 	case op&unix.IN_DELETE == unix.IN_DELETE:
 		return Delete
 	case op&unix.IN_CLOSE_WRITE == unix.IN_CLOSE_WRITE:
-		return Create
+		return Modify
 	case op&unix.IN_MOVED_TO == unix.IN_MOVED_TO:
 		return Create
 	case op&unix.IN_MOVED_FROM == unix.IN_MOVED_FROM:

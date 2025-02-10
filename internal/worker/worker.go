@@ -92,7 +92,8 @@ func CopyFile(src string, dest string) error {
 
 func (w *Worker) processEvent(event fslisten.Event) {
 	switch event.Type {
-	case fslisten.Create: // We only care about creation events for now
+	case fslisten.Create:
+	case fslisten.Modify: // There are cases the `Modify` could be handled more optimally, but this is also fine for now
 		dst, err := filepath.Rel(w.srcDir, event.Path)
 		if err != nil {
 			log.Println("Sync Error:", err)
