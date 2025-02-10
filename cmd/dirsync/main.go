@@ -132,6 +132,7 @@ func main() {
 		fmt.Printf("Showing %d matching log entries:\n\n", len(logs))
 		logger.Print(logs)
 
+		return
 	}
 
 	if err := validateArgs(*hotdir, *backup, *state); err != nil {
