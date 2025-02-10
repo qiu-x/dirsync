@@ -25,22 +25,24 @@ func New[T comparable](filename string) *PersistentQueue[T] {
 func (q *PersistentQueue[T]) PushBack(item T) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	q.items = append(q.items, item)
 	q.SaveToFile()
+
 	q.cond.Signal()
 }
 
 func (q *PersistentQueue[T]) Pop() (T, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if len(q.items) == 0 {
+
+	for len(q.items) == 0 {
 		q.cond.Wait()
-		var zero T
-		return zero, false
 	}
 	item := q.items[0]
 	q.items = q.items[1:]
 	q.SaveToFile()
+
 	return item, true
 }
 
