@@ -24,7 +24,6 @@ func (d *DirWatcher) CreateEventHook() (func(EventHandler), error) {
 
 	return func(handler EventHandler) {
 		for event, err := range listener.ReadEvents {
-			fmt.Println("Event:", event.Type.String(), "on", event.Path)
 			handler(event, err)
 		}
 		listener.Close()
