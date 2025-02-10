@@ -74,6 +74,8 @@ func CopyFile(src string, dest string) error {
 	}
 	defer srcFile.Close()
 
+	dest += ".bak"
+
 	destFile, err := os.Create(dest)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)
@@ -111,12 +113,16 @@ func (w *Worker) processEvent(event fslisten.Event) {
 				os.Exit(1)
 			}
 
-			w.Logger.LogEvent(w.ID, event, fmt.Sprintf("Copied file to %s", destPath))
+			w.Logger.LogEvent(w.ID, event, fmt.Sprintf("Copied file to %s", filepath.Dir(destPath)))
 		}
 	}
 }
 
 func (w *Worker) deleteFileOrDir(srcPath, destPath string) {
+	srcInfo, err := os.Stat(srcPath)
+	if err == nil && !srcInfo.IsDir() {
+		destPath += ".bak"
+	}
 	// Delete from hotdir
 	if err := os.RemoveAll(srcPath); err != nil {
 		log.Printf("Failed to delete source: %s, error: %v\n", srcPath, err)
